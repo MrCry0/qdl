@@ -15,34 +15,54 @@ trap cleanup EXIT
 
 cd "${FLAT_BUILD}"
 
-run_qdl_with_sahara_cfg() {
-	${REP_ROOT}/qdl --dry-run "${SAHARA_CFG}" rawprogram0.xml patch0.xml
+make_sahara_cfg() {
+	cat > "${SAHARA_CFG}" <<EOF
+<?xml version="1.0" ?>
+<sahara_config>
+    <images>
+        <image image_id="13" image_path="$1" />
+    </images>
+</sahara_config>
+EOF
 }
 
-# Test 1: relative image_path — ELF is resolved relative to the XML directory
-cat > "${SAHARA_CFG}" <<EOF
-<?xml version="1.0" ?>
-<sahara_config>
-    <images>
-        <image image_id="13" image_path="prog_firehose_ddr.elf" />
-    </images>
-</sahara_config>
-EOF
+expect_success() {
+	local desc="$1"
+	local image_path="$2"
 
-echo "Testing sahara_config with relative image_path..."
-run_qdl_with_sahara_cfg
-echo "relative image_path: OK"
+	make_sahara_cfg "${image_path}"
+	if ! ${REP_ROOT}/qdl --dry-run "${SAHARA_CFG}" rawprogram0.xml patch0.xml \
+			2>/dev/null; then
+		echo "${desc}: FAIL"
+		exit 1
+	fi
+	echo "${desc}: OK"
+}
 
-# Test 2: absolute image_path — regression test for absolute path handling
-cat > "${SAHARA_CFG}" <<EOF
-<?xml version="1.0" ?>
-<sahara_config>
-    <images>
-        <image image_id="13" image_path="${FLAT_BUILD}/prog_firehose_ddr.elf" />
-    </images>
-</sahara_config>
-EOF
+expect_failure() {
+	local desc="$1"
+	local image_path="$2"
 
-echo "Testing sahara_config with absolute image_path..."
-run_qdl_with_sahara_cfg
-echo "absolute image_path: OK"
+	make_sahara_cfg "${image_path}"
+	if ${REP_ROOT}/qdl --dry-run "${SAHARA_CFG}" rawprogram0.xml patch0.xml \
+			2>/dev/null; then
+		echo "${desc}: FAIL (expected failure)"
+		exit 1
+	fi
+	echo "${desc}: OK (correctly rejected)"
+}
+
+# Pure relative [A-Za-z]+: resolved relative to the XML's directory
+expect_success  "pure relative"    "prog_firehose_ddr.elf"
+
+# Relative with ../: navigates up from the XML's directory (tests/data/ -> tests/)
+expect_success  "relative ../"     "../run_tests.sh"
+
+# POSIX absolute: used as-is
+expect_success  "absolute /"       "${FLAT_BUILD}/prog_firehose_ddr.elf"
+
+# Windows paths: on Linux these are not recognised as absolute, so base_path
+# is prepended and the resulting path does not exist — expected to fail
+expect_failure  "Windows C:\\"     'C:\prog_firehose_ddr.elf'
+expect_failure  "Windows \\\\"     '\\server\prog_firehose_ddr.elf'
+expect_failure  "Windows ..\\"     '..\prog_firehose_ddr.elf'
