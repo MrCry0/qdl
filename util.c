@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <limits.h>
 #include <unistd.h>
 
 #include "oscompat.h"
@@ -72,7 +73,8 @@ void print_hex_dump(const char *prefix, const void *buf, size_t len)
 
 unsigned int attr_as_unsigned(xmlNode *node, const char *attr, int *errors)
 {
-	unsigned int ret;
+	unsigned long value_ul;
+	char *end;
 	xmlChar *value;
 
 	value = xmlGetProp(node, (xmlChar *)attr);
@@ -81,9 +83,17 @@ unsigned int attr_as_unsigned(xmlNode *node, const char *attr, int *errors)
 		return 0;
 	}
 
-	ret = (unsigned int)strtoul((char *)value, NULL, 0);
+	errno = 0;
+	value_ul = strtoul((char *)value, &end, 0);
+	if (end == (char *)value || *end != '\0' ||
+	    (errno == ERANGE && value_ul == ULONG_MAX) || value_ul > UINT_MAX) {
+		(*errors)++;
+		xmlFree(value);
+		return 0;
+	}
+
 	xmlFree(value);
-	return ret;
+	return (unsigned int)value_ul;
 }
 
 const char *attr_as_string(xmlNode *node, const char *attr, int *errors)
@@ -164,7 +174,8 @@ int parse_storage_address(const char *address, int *physical_partition,
 		gpt = strdup(ptr);
 		goto done;
 	}
-	if ((errno == ERANGE && partition == LONG_MAX) || partition < 0)
+	if ((errno == ERANGE && partition == LONG_MAX) || partition < 0 ||
+	    partition > INT_MAX)
 		return -1;
 
 	if (end[0] == '\0')
@@ -180,7 +191,7 @@ int parse_storage_address(const char *address, int *physical_partition,
 		gpt = strdup(ptr);
 		goto done;
 	}
-	if (errno == ERANGE && sector == ULONG_MAX)
+	if ((errno == ERANGE && sector == ULONG_MAX) || sector > UINT_MAX)
 		return -1;
 
 	if (end[0] == '\0')
@@ -194,7 +205,7 @@ int parse_storage_address(const char *address, int *physical_partition,
 	length = strtoul(ptr, &end, 10);
 	if (end == ptr)
 		return -1;
-	if (errno == ERANGE && length == ULONG_MAX)
+	if ((errno == ERANGE && length == ULONG_MAX) || length > UINT_MAX)
 		return -1;
 	if (length == 0)
 		return -1;
@@ -204,8 +215,8 @@ int parse_storage_address(const char *address, int *physical_partition,
 
 done:
 	*physical_partition = partition;
-	*start_sector = sector;
-	*num_sectors = length;
+	*start_sector = (unsigned int)sector;
+	*num_sectors = (unsigned int)length;
 	*gpt_partition = gpt;
 
 	return 0;
