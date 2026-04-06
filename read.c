@@ -85,7 +85,7 @@ int read_op_execute(struct qdl_device *qdl, int (*apply)(struct qdl_device *qdl,
 		fd = open(read_op->filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
 		if (fd < 0) {
 			ux_info("unable to open %s...\n", read_op->filename);
-			return ret;
+			return -errno;
 		}
 
 		ret = apply(qdl, read_op, fd);
