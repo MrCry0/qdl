@@ -178,7 +178,7 @@ static int sahara_read(struct qdl_device *qdl, struct sahara_pkt *pkt,
 	len = pkt->read_req.length;
 
 	image = &images[image_idx];
-	if (offset > image->len || offset + len > image->len) {
+	if (!qdl_bounds_contains(image->len, offset, len)) {
 		ux_err("device requested invalid range of image %d\n", image_idx);
 		return -1;
 	}
@@ -227,7 +227,7 @@ static int sahara_read64(struct qdl_device *qdl, struct sahara_pkt *pkt,
 	len = pkt->read64_req.length;
 
 	image = &images[image_idx];
-	if (offset > image->len || offset + len > image->len) {
+	if (!qdl_bounds_contains(image->len, offset, len)) {
 		ux_err("device requested invalid range of image %d\n", image_idx);
 		return -1;
 	}

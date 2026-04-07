@@ -134,4 +134,9 @@ int parse_storage_address(const char *address, int *physical_partition,
 
 extern bool qdl_debug;
 
+static inline bool qdl_bounds_contains(size_t total, size_t offset, size_t len)
+{
+	return offset <= total && len <= total - offset;
+}
+
 #endif
