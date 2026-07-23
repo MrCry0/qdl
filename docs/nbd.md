@@ -8,10 +8,12 @@ mounted with ordinary tools.
 
 ## Building the plugin
 
-The plugin is built by meson only when the `nbdkit` development files are
-present. Install the runtime and the development package, then reconfigure:
+The plugin is built by meson only when the `nbdkit-plugin.h` header is
+present (no library is required, since nbdkit dlopens plugins and resolves
+their symbols at runtime). Install the runtime and the development package,
+then reconfigure:
 
-- Debian/Ubuntu: `sudo apt install nbdkit nbdkit-dev`
+- Debian/Ubuntu: `sudo apt install nbdkit nbdkit-plugin-dev`
 - Fedora: `sudo dnf install nbdkit nbdkit-devel`
 
 ```bash
@@ -19,10 +21,11 @@ meson setup --reconfigure build
 meson compile -C build
 ```
 
-`meson setup` reports `Run-time dependency nbdkit found: YES` and produces
-`build/nbdkit-qdl-plugin.so`. Pass `-Dnbdkit=enabled` to make the plugin
-mandatory (the build fails if nbdkit is missing) instead of the default
-auto-detection.
+`meson setup` reports `Run-time dependency nbdkit found: YES` (or, on distros
+that ship the header without a `nbdkit.pc` file, `Has header
+"nbdkit-plugin.h" : YES`) and produces `build/nbdkit-qdl-plugin.so`. Pass
+`-Dnbdkit=enabled` to make the plugin mandatory (the build fails if
+`nbdkit-plugin.h` is missing) instead of the default auto-detection.
 
 ## Plugin parameters
 

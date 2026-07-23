@@ -85,8 +85,17 @@ qdl_exe = executable('qdl',
 # --- optional nbdkit plugin ---
 # nbdkit dlopens plugins, so there is no library to link against; the plugin
 # just needs <nbdkit-plugin.h> and compiles all non-main sources into a shared
-# module named exactly "nbdkit-qdl-plugin.so".
-nbdkit_dep = dependency('nbdkit', required: get_option('nbdkit'))
+# module named exactly "nbdkit-qdl-plugin.so". Some distros (e.g. Ubuntu)
+# ship nbdkit.pc, but plain header-only installs exist too, so fall back to
+# a compiler header check rather than hard-requiring pkg-config.
+nbdkit_opt = get_option('nbdkit')
+nbdkit_dep = dependency('nbdkit', required: false)
+if not nbdkit_dep.found() and meson.get_compiler('c').has_header('nbdkit-plugin.h')
+  nbdkit_dep = declare_dependency()
+endif
+if not nbdkit_dep.found() and nbdkit_opt.enabled()
+  error('nbdkit plugin enabled but nbdkit-plugin.h was not found')
+endif
 if nbdkit_dep.found()
   shared_module('nbdkit-qdl-plugin',
     sources : nbdkit_plugin_src + lib_sources + common_sources + [version_h],
