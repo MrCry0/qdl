@@ -155,6 +155,25 @@ if cmocka_dep.found()
     env: ['CMOCKA_MESSAGE_OUTPUT=TAP'],
   )
 
+  test_sahara_config_xml = executable('test_sahara_config_xml',
+    sources : [
+      'test_sahara_config_xml.c',
+      sahara_config_src,
+      util_src,
+      version_h,
+    ],
+    dependencies : common_dep + [cmocka_dep],
+    include_directories : inc,
+  )
+
+  test(
+    'sahara_config image_path resolution',
+    test_sahara_config_xml,
+    suite: 'unit',
+    protocol: 'tap',
+    env: ['CMOCKA_MESSAGE_OUTPUT=TAP'],
+  )
+
   test_oscompat = executable('test_oscompat',
     sources : [
       'test_oscompat.c',
